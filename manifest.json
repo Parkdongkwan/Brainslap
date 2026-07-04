@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "Brain Slap (AI 몰입 코치)",
+  "version": "1.0",
+  "description": "AI가 사용자의 목표와 현재 페이지의 맥락을 분석하여 몰입을 돕습니다.",
+  "permissions": [
+    "activeTab",
+    "tabs",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}
