@@ -41,11 +41,11 @@ llm = ChatOpenAI(
 structured_llm = llm.with_structured_output(EvaluationResult)
 
 # ==========================================
-# 2. 고속 웹 크롤링 함수 (디버깅 프린트 추가)
+# 2. 고속 웹 크롤링 함수 (확장프로그램 실패 시 백업용)
 # ==========================================
 def fast_crawl_webpage(url):
     print("\n" + "="*60)
-    print(f"🌐 [1. 크롤링 스타트] URL: {url}")
+    print(f"🌐 [백업 크롤링 가동] URL: {url}")
     print("="*60)
     
     headers = {
@@ -66,15 +66,13 @@ def fast_crawl_webpage(url):
         cleaned_text = " ".join(raw_text.split())
         
         print(f"📝 [추출된 텍스트 총 글자 수]: {len(cleaned_text)} 자")
-        print(f"🔍 [텍스트 앞부분 200자 미리보기]:\n{cleaned_text[:200]}...")
-        
         return cleaned_text[:8000]
     except Exception as e:
-        print(f"❌ [크롤링 실패 에러 발생]: {e}")
+        print(f"❌ [백업 크롤링마저 실패]: {e}")
         return None
 
 # ==========================================
-# 3. LangChain 평가 함수 (프롬프트 추적 로그 추가)
+# 3. LangChain 평가 함수
 # ==========================================
 def evaluate_with_langchain(text_content, user_goal):
     print("\n" + "-"*60)
@@ -95,7 +93,6 @@ def evaluate_with_langchain(text_content, user_goal):
     ])
     
     try:
-        # 🔍 디버깅용: LLM으로 날아가기 직전 완성된 프롬프트 조립 상태를 확인
         formatted_prompt = prompt_template.format(goal=user_goal, text=text_content)
         print("📊 [LLM 송신 프롬프트 검증 (상위 300자)]")
         print(formatted_prompt[:300] + "\n... (이하 본문 생략) ...")
@@ -106,7 +103,6 @@ def evaluate_with_langchain(text_content, user_goal):
         result = chain.invoke({"goal": user_goal, "text": text_content})
         
         print("\n✨ [3. OpenAI 답장 수신 성공!]")
-        # Pydantic 객체를 직관적인 JSON 형태로 변환해 터미널에 출력
         print(json.dumps(result.model_dump(), indent=2, ensure_ascii=False))
         print("="*60 + "\n")
         
@@ -116,36 +112,45 @@ def evaluate_with_langchain(text_content, user_goal):
         return None
 
 # ==========================================
-# 4. API 엔드포인트 (크롬 요청 수신 로그 추가)
+# 4. API 엔드포인트 수정 및 완공 🛠️
 # ==========================================
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    print("\n📥 [크롬 확장 프로그램으로부터 POST 요청 인입]")
-    data = request.get_json()
-    
-    # 전달받은 raw 데이터 출력
-    print(f"  - 수신된 JSON 데이터: {data}")
-    
+    data = request.json
     url = data.get('url')
+    page_text = data.get('text')  # 👈 확장프로그램이 안전하게 긁어다 준 텍스트
+    page_text = page_text[:1000]
     goal = data.get('goal')
-    
-    if not url or not goal:
-        print("❌ [경고] 크롬이 URL이나 GOAL 데이터 중 일부를 누락하고 보냈습니다.")
-        return jsonify({"error": "URL과 목표를 모두 입력해주세요."}), 400
-        
-    page_text = fast_crawl_webpage(url)
-    
-    if not page_text or len(page_text) < 30:
-        print("⚠️ [주의] 본문이 비어있어 방어용 가짜 텍스트로 대체합니다.")
-        page_text = f"이 페이지는 본문 텍스트가 거의 없거나 읽을 수 없는 구조입니다. 주소는 {url} 입니다."
-    
-    analysis_result = evaluate_with_langchain(page_text, goal)
-    
-    if analysis_result:
-        return jsonify(analysis_result.model_dump())
+
+    print(f"\n📥 [API 요청 수신] URL: {url}")
+    print(f"🎯 유저 현재 목표: {goal}")
+
+    # 1. 확장프로그램이 텍스트를 제대로 주었는지 검증
+    if page_text and len(page_text.strip()) >= 10:
+        print(f"✅ [안전] 확장프로그램이 직접 추출한 텍스트 사용 ({len(page_text)} 자)")
+        final_text = page_text
     else:
-        print("❌ [최종 에러] LLM 연산 결과가 넘어오지 않아 500 에러를 리턴합니다.")
-        return jsonify({"error": "LLM 분석 실패"}), 500
+        # 2. 만약 텍스트가 안 넘어왔다면 기존 서버 크롤링 함수로 백업 가동
+        print("⚠️ [경고] 확장프로그램 텍스트 공백. 서버 자체 크롤링으로 백업 가동합니다.")
+        final_text = fast_crawl_webpage(url)
+
+    # 3. 텍스트가 최종적으로도 없다면 10점 처리해서 경고창 안 뜨게 패스시킴 (방어 코드)
+    if not final_text:
+        print("❌ [패스] 본문 텍스트를 아예 추출할 수 없어 검사를 건너뜁니다.")
+        return jsonify({
+            "score": 10,
+            "reason": "본문을 읽을 수 없는 특수 페이지 혹은 예외 상황입니다.",
+            "summary": []
+        }), 200
+
+    # 4. 정제된 텍스트로 LangChain 호출
+    analysis_result = evaluate_with_langchain(final_text, goal)
+
+    if analysis_result:
+        # Pydantic 객체를 딕셔너리로 변환하여 전송 (JSON 직렬화 가능)
+        return jsonify(analysis_result.model_dump()), 200
+    else:
+        return jsonify({"score": 10, "reason": "AI 분석 실패 (서버 에러)", "summary": []}), 500
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
