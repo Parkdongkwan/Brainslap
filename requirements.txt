@@ -1,0 +1,37 @@
+# ═══════════════════════════════════════════════════════
+# BrainSlap backend — requirements.txt (통합 v1.2 기준)
+# 설치:  pip install -r requirements.txt
+# 위치:  backend/ 폴더 (app.py 와 같은 위치)
+# ═══════════════════════════════════════════════════════
+
+# ── 웹 서버 (app.py) ──
+flask>=3.0
+flask-cors>=4.0
+
+# ── 환경 변수 (.env 로드 — config.py, app.py) ──
+python-dotenv>=1.0
+
+# ── 판정 파이프라인 (app.py: LangChain + 구조화 출력) ──
+langchain-openai>=0.2      # ChatOpenAI (openai 패키지 자동 포함)
+langchain-core>=0.3        # ChatPromptTemplate
+pydantic>=2.0              # EvaluationResult 스키마
+
+# ── 백업 크롤링 (app.py: fast_crawl_webpage) ──
+requests>=2.31
+beautifulsoup4>=4.12
+
+# ── 잔소리 생성 파이프라인 (llm_client.py) ──
+openai>=1.40               # LLM_PROVIDER=openai 일 때 직접 import
+anthropic>=0.34            # LLM_PROVIDER=anthropic 일 때만 필요
+                           # (openai 또는 mock만 쓸 거면 이 줄 삭제 가능)
+
+# ── 표준 라이브러리 (설치 불필요 — 참고용) ──
+# os, json, re, random, logging, hashlib, collections, typing
+
+# ═══════════════════════════════════════════════════════
+# .env 예시 (이 파일과 같은 폴더에 직접 생성, git 커밋 금지):
+#   OPENAI_API_KEY=sk-...
+#   LLM_PROVIDER=openai        # openai | anthropic | mock
+#   OPENAI_MODEL=gpt-4o-mini
+# 프론트(확장프로그램)는 별도 설치 모듈 없음 — 크롬 로드만 하면 됨
+# ═══════════════════════════════════════════════════════

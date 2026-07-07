@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Brain Slap</title>
+  <style>
+    body {
+      width: 330px; margin: 0; padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+      background: #ffffff; color: #1A1D29;
+    }
+    h1 { font-size: 15px; font-weight: 700; margin: 0 0 12px 0; display:flex; align-items:center; gap:6px; }
+    label { font-size: 12px; color: #6B7280; display: block; margin-bottom: 6px; }
+    input[type="text"] {
+      width: 100%; box-sizing: border-box; padding: 9px 10px;
+      border: 1px solid #E2E4E9; border-radius: 8px; font-size: 13px; margin-bottom: 14px;
+    }
+    .persona-chips { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+    .chip {
+      font-size: 12px; padding: 6px 10px; border-radius: 999px;
+      border: 1px solid #E2E4E9; background: #F7F8FA; color: #1A1D29; cursor: pointer;
+    }
+    .chip.active { border: 2px solid #4F46E5; color: #4F46E5; background: #EEF1FF; }
+    input[type="range"] { width: 100%; margin-bottom: 14px; }
+    #intensityValue { font-weight: 600; color: #4F46E5; }
+    button#toggleBtn {
+      width: 100%; padding: 11px; border: none; border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer; background: #4F46E5; color: #ffffff;
+    }
+    button#toggleBtn.active { background: #E85D5D; }
+    #statusText { font-size: 12px; color: #6B7280; text-align: center; margin-top: 10px; }
+
+    /* ── ★ 개입 파트 추가 UI ── */
+    .stats { display:flex; gap:8px; margin-bottom:12px; }
+    .stat { flex:1; border:1px solid #E2E4E9; border-radius:10px; padding:8px 10px; text-align:center; }
+    .stat .k { font-size:10px; color:#6B7280; }
+    .stat .v { font-size:16px; font-weight:800; color:#1A1D29; }
+    .pool-list { display:grid; grid-template-columns:1fr 1fr; gap:5px 8px; margin-bottom:8px; }
+    .pool-list label { display:flex; align-items:center; gap:5px; font-size:11.5px; color:#374151; cursor:pointer; margin:0; }
+    .pool-list input { accent-color:#4F46E5; }
+    .pool-mode { display:flex; gap:12px; font-size:11.5px; color:#374151; margin-bottom:14px; }
+    .pool-mode label { display:flex; align-items:center; gap:4px; cursor:pointer; margin:0; }
+    .pool-mode input { accent-color:#4F46E5; }
+    .session-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+    .session-row input[type=number] {
+      width:70px; padding:8px 10px; border:1px solid #E2E4E9; border-radius:8px; font-size:13px;
+    }
+    .session-row span { font-size:12px; color:#374151; }
+    button#sessionBtn {
+      width:100%; padding:10px; border:none; border-radius:10px;
+      font-size:13px; font-weight:600; cursor:pointer; background:#17a374; color:#fff; margin-bottom:4px;
+    }
+    button#sessionBtn.running { background:#E85D5D; }
+    .hint { font-size:10.5px; color:#9CA3AF; line-height:1.5; margin:0 0 12px 0; }
+  </style>
+</head>
+<body>
+  <h1>🖐️ Brain Slap <span style="font-size:10px;font-weight:600;color:#4F46E5;background:#EEF1FF;padding:2px 8px;border-radius:99px">v1.2</span></h1>
+
+  <!-- ★ 보상 현황 (확인용) -->
+  <div class="stats">
+    <div class="stat"><div class="k">집중 포인트</div><div class="v" id="statPoints">0pt</div></div>
+    <div class="stat"><div class="k">연속 출석</div><div class="v" id="statStreak">1일</div></div>
+  </div>
+
+  <label for="goalInput">오늘의 목표</label>
+  <input id="goalInput" type="text" placeholder="예: 백준 미로 탐색 파이썬으로 풀기" />
+
+  <label>페르소나</label>
+  <div class="persona-chips" id="personaChips">
+    <button class="chip active" data-persona="교관" type="button">🎖️ 교관</button>
+    <button class="chip" data-persona="엄마" type="button">🍳 엄마</button>
+    <button class="chip" data-persona="사극_왕장군" type="button">⚔️ 사극 왕장군</button>
+    <button class="chip" data-persona="면접관" type="button">🧐 면접관</button>
+    <button class="chip" data-persona="츤데레" type="button">😤 츤데레</button>
+    <button class="chip" data-persona="custom" type="button">✏️ 직접 입력</button>
+  </div>
+  <input id="customPersonaInput" type="text" placeholder="예: 능글맞은 선배처럼 말해줘" style="display: none;" />
+
+  <label>말투 강도 <span id="intensityValue">3</span></label>
+  <input id="intensitySlider" type="range" min="1" max="5" step="1" value="3" />
+
+  <!-- ★ 방해 요소 선택 -->
+  <label>방해 요소 선택 (중복 선택 가능)</label>
+  <div class="pool-list" id="poolList"></div>
+  <div class="pool-mode">
+    <label><input type="radio" name="poolMode" value="pool" checked> 선택 풀에서 랜덤</label>
+    <label><input type="radio" name="poolMode" value="random"> 완전 랜덤(전체)</label>
+  </div>
+
+  <!-- ★ 집중 세션 -->
+  <label>집중 세션 (무결점 완주 보상)</label>
+  <div class="session-row">
+    <input id="sessionMin" type="number" value="30" min="5" step="5" /><span>분</span>
+  </div>
+  <button id="sessionBtn" type="button">집중 세션 시작</button>
+  <p class="hint">무결점 완주 보상은 시간 비례(60분까지 분당 1pt, 이후 1.5pt).
+30분 이상 무결점 완주 시 12% 확률로 잭팟 룰렛!</p>
+
+  <button id="toggleBtn" type="button">감시 시작하기</button>
+  <div id="statusText">현재 꺼져 있습니다</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
