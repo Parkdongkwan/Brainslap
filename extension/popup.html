@@ -4,101 +4,175 @@
   <meta charset="UTF-8" />
   <title>Brain Slap</title>
   <style>
-    body {
-      width: 330px; margin: 0; padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-      background: #ffffff; color: #1A1D29;
+    /* ═══ BrainSlap 팝업 v2.0 — 가로형 2컬럼 · 잉크/인디고 미니멀 ═══
+       크롬 팝업 최대 폭 800px 제한 → 780px 사용 */
+    :root{
+      --ink:#171717; --ink-2:#555; --ink-3:#9CA3AF;
+      --line:#E5E7EB; --bg:#FFFFFF; --soft:#F7F7F9;
+      --accent:#5046E5; --accent-soft:#EEF0FF;
+      --danger:#E5484D; --r:10px;
     }
-    h1 { font-size: 15px; font-weight: 700; margin: 0 0 12px 0; display:flex; align-items:center; gap:6px; }
-    label { font-size: 12px; color: #6B7280; display: block; margin-bottom: 6px; }
-    input[type="text"] {
-      width: 100%; box-sizing: border-box; padding: 9px 10px;
-      border: 1px solid #E2E4E9; border-radius: 8px; font-size: 13px; margin-bottom: 14px;
+    *{box-sizing:border-box; margin:0; padding:0}
+    body{
+      width:780px; padding:20px 22px;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+      background:var(--bg); color:var(--ink); font-size:13px; letter-spacing:-.01em;
     }
-    .persona-chips { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
-    .chip {
-      font-size: 12px; padding: 6px 10px; border-radius: 999px;
-      border: 1px solid #E2E4E9; background: #F7F8FA; color: #1A1D29; cursor: pointer;
-    }
-    .chip.active { border: 2px solid #4F46E5; color: #4F46E5; background: #EEF1FF; }
-    input[type="range"] { width: 100%; margin-bottom: 14px; }
-    #intensityValue { font-weight: 600; color: #4F46E5; }
-    button#toggleBtn {
-      width: 100%; padding: 11px; border: none; border-radius: 10px;
-      font-size: 14px; font-weight: 600; cursor: pointer; background: #4F46E5; color: #ffffff;
-    }
-    button#toggleBtn.active { background: #E85D5D; }
-    #statusText { font-size: 12px; color: #6B7280; text-align: center; margin-top: 10px; }
+    button{font-family:inherit; cursor:pointer}
 
-    /* ── ★ 개입 파트 추가 UI ── */
-    .stats { display:flex; gap:8px; margin-bottom:12px; }
-    .stat { flex:1; border:1px solid #E2E4E9; border-radius:10px; padding:8px 10px; text-align:center; }
-    .stat .k { font-size:10px; color:#6B7280; }
-    .stat .v { font-size:16px; font-weight:800; color:#1A1D29; }
-    .pool-list { display:grid; grid-template-columns:1fr 1fr; gap:5px 8px; margin-bottom:8px; }
-    .pool-list label { display:flex; align-items:center; gap:5px; font-size:11.5px; color:#374151; cursor:pointer; margin:0; }
-    .pool-list input { accent-color:#4F46E5; }
-    .pool-mode { display:flex; gap:12px; font-size:11.5px; color:#374151; margin-bottom:14px; }
-    .pool-mode label { display:flex; align-items:center; gap:4px; cursor:pointer; margin:0; }
-    .pool-mode input { accent-color:#4F46E5; }
-    .session-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-    .session-row input[type=number] {
-      width:70px; padding:8px 10px; border:1px solid #E2E4E9; border-radius:8px; font-size:13px;
+    /* ── 헤더: 워드마크 + 보상 현황 ── */
+    .head{display:flex; align-items:center; gap:10px; padding-bottom:16px; border-bottom:1px solid var(--line); margin-bottom:18px}
+    .mark{width:30px; height:30px; border-radius:8px; background:var(--accent); color:#fff;
+      display:grid; place-items:center; font-size:12px; font-weight:900; letter-spacing:-.5px}
+    .wordmark{font-size:16px; font-weight:800; letter-spacing:-.02em}
+    .wordmark .slap{color:var(--accent)}
+    .ver{font-size:10px; font-weight:700; color:var(--accent); background:var(--accent-soft); padding:2px 8px; border-radius:99px}
+    .head-stats{margin-left:auto; display:flex; gap:18px; text-align:right}
+    .hs .k{font-size:10.5px; color:var(--ink-3); font-weight:600}
+    .hs .v{font-size:17px; font-weight:800; font-variant-numeric:tabular-nums}
+
+    /* ── 본문: 2컬럼 그리드 ── */
+    .grid{display:grid; grid-template-columns:1.05fr 1fr; gap:0 26px}
+    .col-l{
+      padding-right:26px; border-right:1px solid var(--line);
+      display:flex; flex-direction:column; justify-content:flex-start; gap:14px;
     }
-    .session-row span { font-size:12px; color:#374151; }
-    button#sessionBtn {
-      width:100%; padding:10px; border:none; border-radius:10px;
-      font-size:13px; font-weight:600; cursor:pointer; background:#17a374; color:#fff; margin-bottom:4px;
+    .field{display:flex; flex-direction:column}
+    label.sec{display:block; font-size:11px; font-weight:700; color:var(--ink-2); margin:0 0 6px}
+
+    input[type=text], input[type=number]{
+      width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:var(--r);
+      font:inherit; font-size:13.5px; outline:none; transition:border-color .15s, box-shadow .15s;
     }
-    button#sessionBtn.running { background:#E85D5D; }
-    .hint { font-size:10.5px; color:#9CA3AF; line-height:1.5; margin:0 0 12px 0; }
+    input[type=text]:focus, input[type=number]:focus{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+
+    /* 페르소나: 단일 선택 → 테두리 강조형 칩 */
+    .persona-chips{display:grid; grid-template-columns:repeat(3,1fr); gap:7px}
+    .chip{
+      padding:9px 6px; border:1px solid var(--line); border-radius:var(--r); background:var(--bg);
+      font-size:12px; font-weight:600; color:var(--ink-2); transition:all .13s; text-align:center;
+    }
+    .chip:hover{border-color:#C9CBD4}
+    .chip.active{border:1.5px solid var(--accent); color:var(--accent); background:var(--accent-soft); font-weight:700}
+
+    /* 말투 강도 */
+    .slider-row{display:flex; align-items:center; gap:12px}
+    input[type=range]{flex:1; accent-color:var(--accent)}
+    #intensityValue{font-size:15px; font-weight:800; color:var(--accent); min-width:16px; text-align:center}
+
+    /* 집중 세션 (분) */
+    .session-row{display:flex; align-items:center; gap:10px}
+    .session-row input{width:78px; text-align:center; font-variant-numeric:tabular-nums}
+    .session-row .hint{font-size:11px; color:var(--ink-3)}
+
+    /* ── 방해 요소: 다중 선택 → 선택 시 채움+테두리 토글 칩 ── */
+    .iv-chips{display:grid; grid-template-columns:1fr 1fr; gap:7px}
+    .ivchip{
+      display:flex; align-items:center; gap:6px; padding:9px 11px;
+      border:1px solid var(--line); border-radius:var(--r); background:var(--bg);
+      font-size:12px; font-weight:600; color:var(--ink-2); transition:all .13s; text-align:left;
+    }
+    .ivchip .tick{
+      width:15px; height:15px; border-radius:5px; border:1.5px solid var(--line); flex:none;
+      display:grid; place-items:center; font-size:9.5px; color:transparent; transition:all .13s; line-height:1;
+    }
+    .ivchip:hover{border-color:#C9CBD4}
+    .ivchip.on{background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700}
+    .ivchip.on .tick{background:#fff; border-color:#fff; color:var(--accent)}
+
+    /* 추첨 모드: 세그먼트 컨트롤 */
+    .seg{display:flex; background:var(--soft); border:1px solid var(--line); border-radius:99px; padding:3px; margin-top:10px}
+    .seg button{
+      flex:1; padding:7px; border:none; border-radius:99px; background:none;
+      font-size:11.5px; font-weight:600; color:var(--ink-3); transition:all .15s;
+    }
+    .seg button.on{background:var(--bg); color:var(--ink); font-weight:700; box-shadow:0 1px 4px rgba(0,0,0,.1)}
+
+    /* ── 액션 버튼: 감시(위) → 세션(아래) ── */
+    .actions{margin-top:18px}
+    #toggleBtn{
+      width:100%; padding:12px; border:none; border-radius:var(--r);
+      background:var(--ink); color:#fff; font-size:14px; font-weight:800; transition:transform .12s, background .15s;
+    }
+    #toggleBtn:hover{transform:translateY(-1px)}
+    #toggleBtn.active{background:var(--danger)}
+    #sessionBtn{
+      width:100%; margin-top:8px; padding:11px; border:1.5px solid var(--accent); border-radius:var(--r);
+      background:var(--accent-soft); color:var(--accent); font-size:13px; font-weight:700; transition:all .15s;
+    }
+    #sessionBtn:hover{background:var(--accent); color:#fff}
+    #sessionBtn.running{border-color:var(--danger); background:#FEF0F0; color:var(--danger)}
+    #statusText{font-size:11.5px; color:var(--ink-3); text-align:center; margin-top:10px}
+    #statusText.on{color:#17A374; font-weight:600}
   </style>
 </head>
 <body>
-  <h1>🖐️ Brain Slap <span style="font-size:10px;font-weight:600;color:#4F46E5;background:#EEF1FF;padding:2px 8px;border-radius:99px">v1.2</span></h1>
 
-  <!-- ★ 보상 현황 (확인용) -->
-  <div class="stats">
-    <div class="stat"><div class="k">집중 포인트</div><div class="v" id="statPoints">0pt</div></div>
-    <div class="stat"><div class="k">연속 출석</div><div class="v" id="statStreak">1일</div></div>
+  <!-- 헤더 -->
+  <div class="head">
+    <span class="mark">BS</span><!-- 임시 로고: 추후 확정본으로 교체 -->
+    <span class="wordmark">Brain<span class="slap">Slap</span></span>
+    <span class="ver">v2.0</span>
+    <div class="head-stats">
+      <div class="hs"><div class="k">집중 포인트</div><div class="v" id="statPoints">0pt</div></div>
+      <div class="hs"><div class="k">연속 출석</div><div class="v" id="statStreak">1일</div></div>
+    </div>
   </div>
 
-  <label for="goalInput">오늘의 목표</label>
-  <input id="goalInput" type="text" placeholder="예: 백준 미로 탐색 파이썬으로 풀기" />
+  <div class="grid">
+    <!-- ══ 좌측: 목표 · 페르소나 · 강도 · 세션 시간 ══ -->
+    <div class="col-l">
+      <div class="field">
+        <label class="sec" for="goalInput">오늘의 목표</label>
+        <input id="goalInput" type="text" placeholder="예: 백준 미로 탐색 파이썬으로 풀기" />
+      </div>
 
-  <label>페르소나</label>
-  <div class="persona-chips" id="personaChips">
-    <button class="chip active" data-persona="교관" type="button">🎖️ 교관</button>
-    <button class="chip" data-persona="엄마" type="button">🍳 엄마</button>
-    <button class="chip" data-persona="사극_왕장군" type="button">⚔️ 사극 왕장군</button>
-    <button class="chip" data-persona="면접관" type="button">🧐 면접관</button>
-    <button class="chip" data-persona="츤데레" type="button">😤 츤데레</button>
-    <button class="chip" data-persona="custom" type="button">✏️ 직접 입력</button>
+      <div class="field">
+        <label class="sec">페르소나</label>
+        <div class="persona-chips" id="personaChips">
+          <button class="chip active" data-persona="교관" type="button">🎖️ 교관</button>
+          <button class="chip" data-persona="엄마" type="button">🍳 엄마</button>
+          <button class="chip" data-persona="사극_왕장군" type="button">⚔️ 왕장군</button>
+          <button class="chip" data-persona="면접관" type="button">🧐 면접관</button>
+          <button class="chip" data-persona="츤데레" type="button">😤 츤데레</button>
+          <button class="chip" data-persona="custom" type="button">✏️ 직접입력</button>
+        </div>
+        <input id="customPersonaInput" type="text" placeholder="예: 능글맞은 선배처럼 말해줘" style="display:none; margin-top:8px" />
+      </div>
+
+      <div class="field">
+        <label class="sec">말투 강도</label>
+        <div class="slider-row">
+          <input id="intensitySlider" type="range" min="1" max="5" step="1" value="3" />
+          <span id="intensityValue">3</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="sec">집중 세션 (분)</label>
+        <div class="session-row">
+          <input id="sessionMin" type="number" value="30" min="5" step="5" />
+          <span class="hint">무결점 완주 시 시간 비례 보상 · 30분↑ 12% 잭팟</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 우측: 방해 요소 · 추첨 모드 · 액션 ══ -->
+    <div class="col-r">
+      <label class="sec">방해 요소 (중복 선택)</label>
+      <div class="iv-chips" id="ivChips"><!-- popup.js가 토글 칩 생성 --></div>
+      <div class="seg" id="poolModeSeg">
+        <button type="button" data-mode="pool" class="on">선택 풀 랜덤</button>
+        <button type="button" data-mode="random">완전 랜덤</button>
+      </div>
+
+      <div class="actions">
+        <button id="toggleBtn" type="button">👁 감시 시작하기</button>
+        <button id="sessionBtn" type="button">🎯 집중 세션 시작</button>
+        <div id="statusText">현재 꺼져 있습니다</div>
+      </div>
+    </div>
   </div>
-  <input id="customPersonaInput" type="text" placeholder="예: 능글맞은 선배처럼 말해줘" style="display: none;" />
-
-  <label>말투 강도 <span id="intensityValue">3</span></label>
-  <input id="intensitySlider" type="range" min="1" max="5" step="1" value="3" />
-
-  <!-- ★ 방해 요소 선택 -->
-  <label>방해 요소 선택 (중복 선택 가능)</label>
-  <div class="pool-list" id="poolList"></div>
-  <div class="pool-mode">
-    <label><input type="radio" name="poolMode" value="pool" checked> 선택 풀에서 랜덤</label>
-    <label><input type="radio" name="poolMode" value="random"> 완전 랜덤(전체)</label>
-  </div>
-
-  <!-- ★ 집중 세션 -->
-  <label>집중 세션 (무결점 완주 보상)</label>
-  <div class="session-row">
-    <input id="sessionMin" type="number" value="30" min="5" step="5" /><span>분</span>
-  </div>
-  <button id="sessionBtn" type="button">집중 세션 시작</button>
-  <p class="hint">무결점 완주 보상은 시간 비례(60분까지 분당 1pt, 이후 1.5pt).
-30분 이상 무결점 완주 시 12% 확률로 잭팟 룰렛!</p>
-
-  <button id="toggleBtn" type="button">감시 시작하기</button>
-  <div id="statusText">현재 꺼져 있습니다</div>
 
   <script src="popup.js"></script>
 </body>
