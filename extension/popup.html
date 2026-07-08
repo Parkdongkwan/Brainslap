@@ -55,11 +55,6 @@
     .chip:hover{border-color:#C9CBD4}
     .chip.active{border:1.5px solid var(--accent); color:var(--accent); background:var(--accent-soft); font-weight:700}
 
-    /* 말투 강도 */
-    .slider-row{display:flex; align-items:center; gap:12px}
-    input[type=range]{flex:1; accent-color:var(--accent)}
-    #intensityValue{font-size:15px; font-weight:800; color:var(--accent); min-width:16px; text-align:center}
-
     /* 집중 세션 (분) */
     .session-row{display:flex; align-items:center; gap:10px}
     .session-row input{width:78px; text-align:center; font-variant-numeric:tabular-nums}
@@ -120,7 +115,7 @@
   </div>
 
   <div class="grid">
-    <!-- ══ 좌측: 목표 · 페르소나 · 강도 · 세션 시간 ══ -->
+    <!-- ══ 좌측: 목표 · 페르소나 · 세션 시간 ══ -->
     <div class="col-l">
       <div class="field">
         <label class="sec" for="goalInput">오늘의 목표</label>
@@ -138,14 +133,6 @@
           <button class="chip" data-persona="custom" type="button">✏️ 직접입력</button>
         </div>
         <input id="customPersonaInput" type="text" placeholder="예: 능글맞은 선배처럼 말해줘" style="display:none; margin-top:8px" />
-      </div>
-
-      <div class="field">
-        <label class="sec">말투 강도</label>
-        <div class="slider-row">
-          <input id="intensitySlider" type="range" min="1" max="5" step="1" value="3" />
-          <span id="intensityValue">3</span>
-        </div>
       </div>
 
       <div class="field">

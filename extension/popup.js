@@ -16,15 +16,14 @@ if (typeof chrome === 'undefined' || !chrome.storage) {
 // ═══════════════════════════════════════════════════════════════
 // BrainSlap — popup.js  v2.0 (가로형 레이아웃 대응)
 // storage 키(팀 합의 유지): currentGoal, isMonitoring, currentPersona,
-//   currentIntensity, interventionPool, poolMode, points, streak, sessionEndsAt
+//   interventionPool, poolMode, points, streak, sessionEndsAt
+// (currentIntensity는 서버가 score 기반으로 자동 계산하므로 더 이상 저장하지 않음)
 // UI 변경: 방해요소 체크박스 → 토글 칩 / 추첨 모드 라디오 → 세그먼트 컨트롤
 // ═══════════════════════════════════════════════════════════════
 
 const goalInput = document.getElementById('goalInput');
 const personaChips = document.querySelectorAll('#personaChips .chip');
 const customPersonaInput = document.getElementById('customPersonaInput');
-const intensitySlider = document.getElementById('intensitySlider');
-const intensityValue = document.getElementById('intensityValue');
 const toggleBtn = document.getElementById('toggleBtn');
 const statusText = document.getElementById('statusText');
 const ivChipsBox = document.getElementById('ivChips');
@@ -70,7 +69,7 @@ segBox.querySelectorAll('button').forEach(btn => {
 
 // ============= 초기값 불러오기 =============
 chrome.storage.local.get(
-  ['currentGoal', 'isMonitoring', 'currentPersona', 'currentIntensity',
+  ['currentGoal', 'isMonitoring', 'currentPersona',
    'interventionPool', 'poolMode', 'points', 'streak', 'sessionEndsAt'],
   (storage) => {
     if (storage.currentGoal) goalInput.value = storage.currentGoal;
@@ -86,11 +85,6 @@ chrome.storage.local.get(
         customPersonaInput.style.display = 'block';
         customPersonaInput.value = selectedPersona;
       }
-    }
-
-    if (storage.currentIntensity) {
-      intensitySlider.value = storage.currentIntensity;
-      intensityValue.textContent = storage.currentIntensity;
     }
 
     isMonitoring = !!storage.isMonitoring;
@@ -136,11 +130,7 @@ customPersonaInput.addEventListener('input', () => {
   persistSettings();
 });
 
-// ============= 말투 강도 / 목표 =============
-intensitySlider.addEventListener('input', () => {
-  intensityValue.textContent = intensitySlider.value;
-  persistSettings();
-});
+// ============= 목표 =============
 goalInput.addEventListener('input', persistSettings);
 
 // ============= 감시 시작/종료 (상단 메인 버튼) =============
@@ -171,7 +161,6 @@ function persistSettings() {
     currentGoal: goalInput.value.trim(),
     isMonitoring: isMonitoring,
     currentPersona: selectedPersona || '교관',
-    currentIntensity: parseInt(intensitySlider.value, 10),
     interventionPool: pool,
     poolMode: poolMode,
   });
