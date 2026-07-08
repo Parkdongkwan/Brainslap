@@ -61,108 +61,80 @@ function scheduleAnalysis(tabId, url, source) {
 
         if (!isMonitoring || !targetGoal) return;
 
-        // ★ [고도화] 목표(Goal)와 URL을 조합한 고유 캐시 키 생성
         const cacheKey = `${targetGoal}|${url}`;
         const now = Date.now();
 
-        // ★ [고도화] 캐시가 존재하고 만료 시간(TTL)이 지나지 않았는지 확인
+        // 🟢 1번 urlCache 적중 확인 (5분 이내 재방문/새로고침)
         if (urlCache[cacheKey]) {
           if (now < urlCache[cacheKey].expireAt) {
-            console.log(`[AI 캐시 적중] 목표 동일 + 5분 이내 판정 보존 -> API 호출 생략: ${url}`);
+            console.log(`[AI 1번 캐시 적중] 서버 요청을 발생시키지 않고 로컬 재사용: ${url}`);
             const cachedData = urlCache[cacheKey];
+            
+            // 딴짓(5점 미만)일 때만 저장해뒀던 정보 그대로 개입 UI 발동
             if (cachedData.score < 5) {
-              try {
-                const naggingRes = await fetch(`${BACKEND_URL}/nagging`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    goal: targetGoal,
-                    title: cachedData.title,
-                    persona: persona,
-                    intensity: intensity,
-                    reason: cachedData.reason,
-                  }),
-                });
-                const naggingData = await naggingRes.json();
-                const tab = await chrome.tabs.get(tabId).catch(() => ({ url, title: '' }));
-                dispatchIntervention(tabId, tab, cachedData.score, targetGoal, cachedData.reason, naggingData, persona, intensity);
-              } catch (e) {
-                console.error('[캐시 적중 후 잔소리 재생성 실패]', e);
-                const tab = await chrome.tabs.get(tabId).catch(() => ({ url, title: '' }));
-                dispatchIntervention(tabId, tab, cachedData.score, targetGoal, cachedData.reason, null, persona, intensity);
-              }
+              const tab = await chrome.tabs.get(tabId).catch(() => ({ url, title: '' }));
+              dispatchIntervention(
+                tabId, 
+                tab, 
+                cachedData.score, 
+                targetGoal, 
+                cachedData.reason, 
+                cachedData.nagging, // 이전에 받아온 잔소리 세트 그대로 출력
+                persona, 
+                intensity
+              );
             }
-            return;
+            return; // 💥 서버 요청 원천 차단 후 종료
           } else {
-            // 5분이 지나 만료된 캐시는 삭제 후 재생성하도록 유도
-            console.log(`[AI 캐시 만료] 5분이 경과하여 캐시를 폐기하고 재분석합니다: ${url}`);
+            console.log(`[AI 1번 캐시 만료] 5분 경과로 캐시 폐기: ${url}`);
             delete urlCache[cacheKey];
           }
         }
 
-        console.log(`[AI 감시 구동] 5초 체류 완료, 분석 시작: ${url}`);
+        console.log(`[AI 감시 구동] 1번 캐시 미스 -> 서버 분석 요청 시작: ${url}`);
 
         try {
-          // 본문 텍스트 추출 (네이버 블로그 대응)
+          // 본문 텍스트 추출 로직
           const [{ result: pageInfo }] = await chrome.scripting.executeScript({
             target: { tabId: tabId },
             func: () => {
               const naverIframe = document.getElementById('mainFrame');
               if (naverIframe && naverIframe.contentWindow) {
-                try {
-                  return {
-                    text: naverIframe.contentWindow.document.body.innerText,
-                    title: document.title,
-                  };
-                } catch (e) {}
+                try { return { text: naverIframe.contentWindow.document.body.innerText, title: document.title }; } catch (e) {}
               }
-              const bodyText = document.body.innerText || "";
-              return {
-                text: bodyText.substring(0, 2000),
-                title: document.title,
-              };
+              return { text: (document.body.innerText || "").substring(0, 2000), title: document.title };
             }
           }).catch(() => [{ result: { text: "", title: "" } }]);
 
           const pageText = pageInfo.text;
           const pageTitle = pageInfo.title;
 
-          if (!pageText || pageText.trim().length < 10) {
-            console.log("[AI 감시 패스] 본문 텍스트가 없거나 읽을 수 없는 페이지입니다.");
-            return;
-          }
+          if (!pageText || pageText.trim().length < 10) return;
 
+          // 서버의 /analyze 엔드포인트 딱 하나만 찌름
           const response = await fetch(`${BACKEND_URL}/analyze`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              url: url,
-              text: pageText,
-              goal: targetGoal,
-              title: pageTitle,
-              persona: persona,
-              intensity: intensity,
+              url: url, text: pageText, goal: targetGoal, title: pageTitle, persona: persona, intensity: intensity,
             })
           });
 
-          if (!response.ok) {
-            const errBody = await response.text().catch(() => '(본문 없음)');
-            console.error(`[서버 에러 응답] HTTP ${response.status}`, errBody.slice(0, 300));
-            return;
-          }
+          if (!response.ok) return;
 
           const data = await response.json();
           const score = parseInt(data.score, 10);
           const reason = data.reason || "목표와 연관성이 떨어집니다.";
-          const nagging = data.nagging || null;
+          const nagging = data.nagging || null; // 서버에서 갓 구워낸 따끈한 잔소리
 
-          // ★ [고도화] 판정 성공 시 복합 키와 만료 시간(현재 시간 + 5분)을 함께 저장
+          // 💾 1번 캐시에 결과값 및 5분 뒤 만료시간 세팅
           if (!isNaN(score)) {
             urlCache[cacheKey] = { 
               score: score, 
               reason: reason, 
               title: pageTitle,
-              expireAt: Date.now() + CACHE_TTL // 만료 타임스탬프 설정
+              nagging: nagging, 
+              expireAt: Date.now() + CACHE_TTL 
             };
           }
 
@@ -171,7 +143,7 @@ function scheduleAnalysis(tabId, url, source) {
             dispatchIntervention(tabId, tab, score, targetGoal, reason, nagging, persona, intensity);
           }
         } catch (error) {
-          console.error("백엔드 서버 통신 실패 또는 에러:", error);
+          console.error("백엔드 서버 통신 실패:", error);
         }
       }
     );

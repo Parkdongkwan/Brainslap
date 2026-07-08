@@ -15,7 +15,7 @@ import time
 # config.py에 EVALUATION_CACHE_TTL 값이 없다면 아래 기본값(초)을 사용
 try:
     import config
-    DEFAULT_TTL = getattr(config, "EVALUATION_CACHE_TTL", 300)
+    DEFAULT_TTL = getattr(config, "EVALUATION_CACHE_TTL", 1800)
 except ImportError:
     DEFAULT_TTL = 300
 
